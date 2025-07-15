@@ -14,9 +14,11 @@ from aiq_aira.prompts import relevancy_checker
 from aiq_aira.tools import search_rag, search_tavily
 from aiq_aira.utils import dummy, _escape_markdown
 import html
+import os
+from textwrap import dedent
 
 logger = logging.getLogger(__name__)
-
+use_vast = os.getenv('USE_VAST', 'false').lower() == 'true'
 
 async def check_relevancy(llm: ChatOpenAI, query: str, answer: str, writer: StreamWriter):
     """
@@ -60,6 +62,89 @@ Error checking relevancy. Query: {query} \n \n Answer: {processed_answer_for_dis
     return {"score": "yes"}
 
 
+async def perform_conversation_api_search(prompt: str, collection: str, writer: StreamWriter):
+    """
+    Performs conversation API search using the vast backend.
+    """
+    writer({"rag_answer": "\n Performing conversation API search \n"})
+    logger.info("CONVERSATION API SEARCH")
+
+    base_url = os.getenv('NGINX_PROXY_URL', 'http://aira-nginx:8051') + '/v2/protected/aiq/v1/vast'
+
+    # Create a new session for API calls
+    async with aiohttp.ClientSession() as session:
+        try:
+            # Step 1: Create a new conversation
+            headers = {"accept": "application/json", "Content-Type": "application/json", "Authorization": "Bearer YOUR_API_KEY"}
+
+            # Create a new conversation
+            create_conv_url = f"{base_url}/api/v1/conversations"
+            async with session.post(
+                create_conv_url,
+                headers=headers,
+                json={"title": f"Query: {prompt[:30]}...", "collection_name": collection},
+            ) as response:
+                response.raise_for_status()
+                conversation_data = await response.json()
+                conversation_id = conversation_data["id"]
+
+            # Step 2: Send the prompt to the conversation
+            prompt_url = f"{base_url}/api/v1/conversations/{conversation_id}/prompt"
+            prompt_data = {"prompt": prompt}
+
+            async with asyncio.timeout(ASYNC_TIMEOUT):
+                async with session.post(
+                    prompt_url, headers=headers, json=prompt_data
+                ) as response:
+                    response.raise_for_status()
+                    result = await response.json()
+
+                    # Extract the content from the response
+                    content = result.get("content", "")
+
+                    # Format citations similar to search_rag
+                    sources = result.get("sources", [])
+                    citations_text = ""
+                    if sources:
+                        citations_text = ", ".join(
+                            [source.get("doc_path", "") for source in sources]
+                        )
+
+                    citations = dedent(f"""
+                        ---
+                        QUERY: 
+                        {prompt}
+
+                        ANSWER: 
+                        {content}
+
+                        CITATION:
+                        {citations_text}
+                        """).strip()
+                    return (content, citations)
+
+        except asyncio.TimeoutError:
+            writer(
+                {
+                    "rag_answer": dedent(f"""
+                        -------------
+                        Timeout getting conversation API answer for question {prompt} 
+                        """).strip()
+                }
+            )
+            return ("Timeout fetching conversation API:", "")
+        except Exception as e:
+            writer(
+                {
+                    "rag_answer": dedent(f"""
+                        -------------
+                        Error getting conversation API answer for question {prompt}: {str(e)}
+                        """).strip()
+                }
+            )
+            return (f"Error with conversation API: {e}", "")
+
+
 async def fetch_query_results(
     rag_url: str,
     prompt: str,
@@ -70,10 +155,12 @@ async def fetch_query_results(
     Calls the search_rag tool in parallel for each prompt in parallel.
     Returns a list of tuples (answer, citations).
     """
+    if use_vast:
+        return await perform_conversation_api_search(prompt, collection, writer)
+
     async with aiohttp.ClientSession() as session:
         result =  await search_rag(session, rag_url, prompt, writer, collection)
         return result
-
 
 
 def deduplicate_and_format_sources(
@@ -106,7 +193,6 @@ def deduplicate_and_format_sources(
             answer_elem.text = fallback_ans
 
     return ET.tostring(root, encoding="unicode")
-
 
 
 async def process_single_query(
