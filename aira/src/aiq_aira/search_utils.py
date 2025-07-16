@@ -18,7 +18,7 @@ import os
 from textwrap import dedent
 
 logger = logging.getLogger(__name__)
-use_vast = os.getenv('USE_VAST', 'false').lower() == 'true'
+use_vast = os.getenv('USE_VAST_RAG', 'false').lower() == 'true'
 
 async def check_relevancy(llm: ChatOpenAI, query: str, answer: str, writer: StreamWriter):
     """
@@ -34,7 +34,7 @@ async def check_relevancy(llm: ChatOpenAI, query: str, answer: str, writer: Stre
             response = await llm.ainvoke(
                 relevancy_checker.format(document=answer, query=query)
             )
-            score = parse_json_markdown(response.content)
+            score = parse_json_markdown(response.content) # type: ignore 
             writer({"relevancy_checker": f""" =
     ---
     Relevancy score: {score.get("score")}  
@@ -69,7 +69,7 @@ async def perform_conversation_api_search(prompt: str, collection: str, writer: 
     writer({"rag_answer": "\n Performing conversation API search \n"})
     logger.info("CONVERSATION API SEARCH")
 
-    base_url = os.getenv('NGINX_PROXY_URL', 'http://aira-nginx:8051') + '/v2/protected/aiq/v1/vast'
+    base_url = os.getenv("VAST_RAG_BASE_URL", "http://langchain-backend:8080")
 
     # Create a new session for API calls
     async with aiohttp.ClientSession() as session:
@@ -90,7 +90,7 @@ async def perform_conversation_api_search(prompt: str, collection: str, writer: 
 
             # Step 2: Send the prompt to the conversation
             prompt_url = f"{base_url}/api/v1/conversations/{conversation_id}/prompt"
-            prompt_data = {"prompt": prompt}
+            prompt_data = {"prompt": prompt, "collection_name": collection}
 
             async with asyncio.timeout(ASYNC_TIMEOUT):
                 async with session.post(
@@ -107,15 +107,15 @@ async def perform_conversation_api_search(prompt: str, collection: str, writer: 
                     citations_text = ""
                     if sources:
                         citations_text = ", ".join(
-                            [source.get("doc_path", "") for source in sources]
+                            set([source.get("doc_path", "") for source in sources])
                         )
 
                     citations = dedent(f"""
                         ---
-                        QUERY: 
+                        QUERY:
                         {prompt}
 
-                        ANSWER: 
+                        ANSWER:
                         {content}
 
                         CITATION:
@@ -128,7 +128,7 @@ async def perform_conversation_api_search(prompt: str, collection: str, writer: 
                 {
                     "rag_answer": dedent(f"""
                         -------------
-                        Timeout getting conversation API answer for question {prompt} 
+                        Timeout getting conversation API answer for question {prompt}
                         """).strip()
                 }
             )
@@ -214,10 +214,10 @@ async def process_single_query(
       (rag_answer, rag_citation, relevancy, web_answer, web_citation)
     """
 
-    rag_url = config["configurable"].get("rag_url")
+    rag_url = config["configurable"].get("rag_url")  # type: ignore
     # Process RAG search
-    rag_answer, rag_citation = await fetch_query_results(rag_url, query, writer, collection)
-    
+    rag_answer, rag_citation = await fetch_query_results(rag_url, query, writer, collection)  # type: ignore
+
     writer({"rag_answer": rag_citation}) # citation includes the answer
 
     # Check relevancy for this query's answer.
