@@ -30,14 +30,14 @@ server {
     # Original routes
     location ~ ^/v1/(status|documents|collections) {
         proxy_pass ${RAG_INGEST_URL}/$1$is_args$args;
-        proxy_set_header Host ${RAG_INGEST_HOST};
+        proxy_set_header Host $proxy_host;
         proxy_ssl_verify off;
     }
 
     # Protected routes
     location ~ ^/v2/protected/aiq/v1/(status|documents|collections) {
         proxy_pass ${RAG_INGEST_URL}/$1$is_args$args;
-        proxy_set_header Host ${RAG_INGEST_HOST};
+        proxy_set_header Host $proxy_host;
         proxy_ssl_verify off;
     }
 
@@ -50,7 +50,7 @@ server {
     # Special case for files route
     location /v2/protected/aiq/v1/files {
         proxy_pass ${RAG_INGEST_URL}/v1/documents;
-        proxy_set_header Host ${RAG_INGEST_HOST};
+        proxy_set_header Host $proxy_host;
         proxy_ssl_verify off;
     }
 
