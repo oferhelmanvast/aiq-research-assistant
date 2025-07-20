@@ -62,6 +62,28 @@ Error checking relevancy. Query: {query} \n \n Answer: {processed_answer_for_dis
     return {"score": "yes"}
 
 
+async def get_auth_token(base_url: str, session: aiohttp.ClientSession) -> str:
+    """
+    Authenticate with the RAG backend and get JWT token.
+    """
+    auth_url = f"{base_url}/auth/token"
+    # TODO - HORRIBLE!!This should be replaced with a proper dynamic OAuth2PasswordRequestForm object!
+    auth_data = {
+        "username": "public",
+        "password": "Genai1234!"
+    }
+    
+    async with session.post(
+        auth_url,
+        data=auth_data,  # OAuth2PasswordRequestForm expects form data
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
+        ssl=False  # Disable SSL verification for self-signed certificates
+    ) as response:
+        response.raise_for_status()
+        token_data = await response.json()
+        return token_data["access_token"]
+
+
 async def perform_conversation_api_search(prompt: str, collection: str, writer: StreamWriter):
     """
     Performs conversation API search using the vast backend.
@@ -72,10 +94,13 @@ async def perform_conversation_api_search(prompt: str, collection: str, writer: 
     base_url = os.getenv("VAST_RAG_BASE_URL", "http://langchain-backend:8080")
 
     # Create a new session for API calls
-    async with aiohttp.ClientSession() as session:
+    async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
         try:
-            # Step 1: Create a new conversation
-            headers = {"accept": "application/json", "Content-Type": "application/json", "Authorization": "Bearer YOUR_API_KEY"}
+            # Step 1: Get authentication token
+            access_token = await get_auth_token(base_url, session)
+            
+            # Step 2: Create a new conversation
+            headers = {"accept": "application/json", "Content-Type": "application/json", "Authorization": f"Bearer {access_token}"}
 
             # Create a new conversation
             create_conv_url = f"{base_url}/api/v1/conversations"
