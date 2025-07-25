@@ -62,6 +62,28 @@ Error checking relevancy. Query: {query} \n \n Answer: {processed_answer_for_dis
     return {"score": "yes"}
 
 
+async def get_auth_token(base_url: str, session: aiohttp.ClientSession) -> str:
+    """
+    Authenticate with the RAG backend and get JWT token.
+    """
+    auth_url = f"{base_url}/auth/token"
+    # TODO - HORRIBLE!!This should be replaced with a proper dynamic OAuth2PasswordRequestForm object!
+    auth_data = {
+        "username": "public",
+        "password": "Genai1234!"
+    }
+    
+    async with session.post(
+        auth_url,
+        data=auth_data,  # OAuth2PasswordRequestForm expects form data
+        headers={"Content-Type": "application/x-www-form-urlencoded"},
+        ssl=False  # Disable SSL verification for self-signed certificates
+    ) as response:
+        response.raise_for_status()
+        token_data = await response.json()
+        return token_data["access_token"]
+
+
 async def perform_conversation_api_search(prompt: str, collection: str, writer: StreamWriter):
     """
     Performs conversation API search using the vast backend.
@@ -73,23 +95,27 @@ async def perform_conversation_api_search(prompt: str, collection: str, writer: 
     base_url = os.getenv("VAST_RAG_BASE_URL", "http://langchain-backend:8080")
 
     # Create a new session for API calls
-    async with aiohttp.ClientSession() as session:
+    async with aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=False)) as session:
         try:
-            # Step 1: Create a new conversation
+            # Step 1: Try to get authentication from AIQ context first
             from aiq.builder.context import AIQContext
             aiq_context = AIQContext.get()
             headers = dict(aiq_context.metadata.headers) if aiq_context.metadata.headers else {}
             headers.update({"accept": "application/json", "Content-Type": "application/json"})
             
-            # Log authentication header
+            # Check for existing auth header from context
             auth_header = headers.get("authorization") or headers.get("Authorization")
             if auth_header:
                 if not auth_header.startswith("Bearer "):
                     auth_header = f"Bearer {auth_header}"
                 headers["Authorization"] = auth_header
-                logger.info(f"Using authentication header: {auth_header[:27]}...")
+                logger.info(f"Using authentication header from AIQ context: {auth_header[:27]}...")
             else:
-                logger.info("No authentication header found")
+                # Step 2: Fallback to token-based authentication
+                logger.info("No authentication header found in context, getting token...")
+                access_token = await get_auth_token(base_url, session)
+                headers["Authorization"] = f"Bearer {access_token}"
+                logger.info(f"Using token-based authentication: Bearer {access_token[:20]}...")
 
             # Create a new conversation
             create_conv_url = f"{base_url}/api/v1/conversations"
