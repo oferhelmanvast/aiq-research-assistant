@@ -66,6 +66,7 @@ async def perform_conversation_api_search(prompt: str, collection: str, writer: 
     """
     Performs conversation API search using the vast backend.
     """
+    import aiq
     writer({"rag_answer": "\n Performing conversation API search \n"})
     logger.info("CONVERSATION API SEARCH")
 
@@ -75,7 +76,20 @@ async def perform_conversation_api_search(prompt: str, collection: str, writer: 
     async with aiohttp.ClientSession() as session:
         try:
             # Step 1: Create a new conversation
-            headers = {"accept": "application/json", "Content-Type": "application/json", "Authorization": "Bearer YOUR_API_KEY"}
+            from aiq.builder.context import AIQContext
+            aiq_context = AIQContext.get()
+            headers = dict(aiq_context.metadata.headers) if aiq_context.metadata.headers else {}
+            headers.update({"accept": "application/json", "Content-Type": "application/json"})
+            
+            # Log authentication header
+            auth_header = headers.get("authorization") or headers.get("Authorization")
+            if auth_header:
+                if not auth_header.startswith("Bearer "):
+                    auth_header = f"Bearer {auth_header}"
+                headers["Authorization"] = auth_header
+                logger.info(f"Using authentication header: {auth_header[:27]}...")
+            else:
+                logger.info("No authentication header found")
 
             # Create a new conversation
             create_conv_url = f"{base_url}/api/v1/conversations"
