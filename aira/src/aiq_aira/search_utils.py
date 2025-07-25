@@ -109,12 +109,14 @@ async def perform_conversation_api_search(prompt: str, collection: str, writer: 
                     auth_header = f"Bearer {auth_header}"
                 headers["Authorization"] = auth_header
                 logger.info(f"Using authentication header from AIQ context: {auth_header}...")
-            else:
+            try:
                 # Step 2: Fallback to token-based authentication
                 logger.info("No authentication header found in context, getting token...")
                 access_token = await get_auth_token(base_url, session)
                 headers["Authorization"] = f"Bearer {access_token}"
                 logger.info(f"Using token-based authentication: Bearer {access_token}...")
+            except Exception as e:
+                logger.error(f"Failed to get authentication token: {e}")
 
             # Create a new conversation
             create_conv_url = f"{base_url}/api/v1/conversations"
