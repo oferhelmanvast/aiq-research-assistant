@@ -88,7 +88,6 @@ async def perform_conversation_api_search(prompt: str, collection: str, writer: 
     """
     Performs conversation API search using the vast backend.
     """
-    import aiq
     writer({"rag_answer": "\n Performing conversation API search \n"})
     logger.info("CONVERSATION API SEARCH")
 
@@ -109,13 +108,13 @@ async def perform_conversation_api_search(prompt: str, collection: str, writer: 
                 if not auth_header.startswith("Bearer "):
                     auth_header = f"Bearer {auth_header}"
                 headers["Authorization"] = auth_header
-                logger.info(f"Using authentication header from AIQ context: {auth_header[:27]}...")
+                logger.info(f"Using authentication header from AIQ context: {auth_header}...")
             else:
                 # Step 2: Fallback to token-based authentication
                 logger.info("No authentication header found in context, getting token...")
                 access_token = await get_auth_token(base_url, session)
                 headers["Authorization"] = f"Bearer {access_token}"
-                logger.info(f"Using token-based authentication: Bearer {access_token[:20]}...")
+                logger.info(f"Using token-based authentication: Bearer {access_token}...")
 
             # Create a new conversation
             create_conv_url = f"{base_url}/api/v1/conversations"
