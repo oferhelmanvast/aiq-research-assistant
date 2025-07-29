@@ -107,7 +107,7 @@ async def perform_conversation_api_search(prompt: str, collection: str, writer: 
 
             # Step 2: Send the prompt to the conversation
             prompt_url = f"{base_url}/api/v1/conversations/{conversation_id}/prompt"
-            prompt_data = {"prompt": prompt, "collection_name": collection}
+            prompt_data = {"prompt": prompt}
 
             async with asyncio.timeout(ASYNC_TIMEOUT):
                 logger.info(f"Sending prompt to conversation with URL: {prompt_url}")
