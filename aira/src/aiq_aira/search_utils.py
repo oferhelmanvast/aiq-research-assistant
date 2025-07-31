@@ -35,11 +35,13 @@ async def check_relevancy(llm: ChatOpenAI, query: str, answer: str, writer: Stre
                 relevancy_checker.format(document=answer, query=query)
             )
             score = parse_json_markdown(response.content) # type: ignore 
-            writer({"relevancy_checker": f""" =
-    ---
-    Relevancy score: {score.get("score")}  
-    Query: {query}
-    Answer: {processed_answer_for_display}
+            writer({"relevancy_checker": f"""
+
+---
+Relevancy score: {score.get("score")}  
+Query: {query}
+Answer: {processed_answer_for_display}
+
     """})
 
             return score
@@ -129,7 +131,7 @@ async def perform_conversation_api_search(prompt: str, collection: str, writer: 
                         )
 
                     citations = dedent(f"""
-                        
+
 ---
 QUERY:
 {prompt}
