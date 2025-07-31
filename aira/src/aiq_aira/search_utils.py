@@ -129,16 +129,18 @@ async def perform_conversation_api_search(prompt: str, collection: str, writer: 
                         )
 
                     citations = dedent(f"""
-                        ---
-                        QUERY:
-                        {prompt}
+                        
+---
+QUERY:
+{prompt}
 
-                        ANSWER:
-                        {content}
+ANSWER:
+{content}
 
-                        CITATION:
-                        {citations_text}
-                        """).strip()
+CITATION:
+{citations_text}
+
+                        """)
                     return (content, citations)
 
         except asyncio.TimeoutError:
