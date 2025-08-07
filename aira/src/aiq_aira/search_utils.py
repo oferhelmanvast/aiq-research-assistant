@@ -1,4 +1,5 @@
 import asyncio
+import json
 import aiohttp
 import re
 import xml.etree.ElementTree as ET
@@ -109,7 +110,7 @@ async def perform_conversation_api_search(prompt: str, collection: str, writer: 
 
             # Step 2: Send the prompt to the conversation
             prompt_url = f"{base_url}/api/v1/conversations/{conversation_id}/prompt"
-            prompt_data = {"prompt": prompt}
+            prompt_data = {"prompt": prompt, "extra_metadata_fields": ["task_ingestion_id"]}
 
             async with asyncio.timeout(ASYNC_TIMEOUT):
                 logger.info(f"Sending prompt to conversation with URL: {prompt_url}")
@@ -124,12 +125,16 @@ async def perform_conversation_api_search(prompt: str, collection: str, writer: 
 
                     # Format citations similar to search_rag
                     sources = result.get("sources", [])
-                    citations_text = ""
-                    if sources:
-                        citations_text = ", ".join(
-                            set([source.get("doc_path", "") for source in sources])
+                    citations_url = ""
+                    for source in sources:
+                        md = source.get("extra_metadata", '{}')
+                        md = json.loads(md)
+                        cit = md.get(
+                            "confluence-page-url", ""
                         )
-
+                        if not cit:
+                            cit = source.get("doc_path", "")
+                        citations_url += f"- {cit}\n"
                     citations = dedent(f"""
 
 ---
@@ -140,7 +145,7 @@ ANSWER:
 {content}
 
 CITATION:
-{citations_text}
+{citations_url}
 
                         """)
                     return (content, citations)
