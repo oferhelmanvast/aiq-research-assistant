@@ -110,7 +110,10 @@ async def perform_conversation_api_search(prompt: str, collection: str, writer: 
 
             # Step 2: Send the prompt to the conversation
             prompt_url = f"{base_url}/api/v1/conversations/{conversation_id}/prompt"
-            prompt_data = {"prompt": prompt, "extra_metadata_fields": ["task_ingestion_id"]}
+            prompt_data = {
+                "prompt": prompt,
+                "extra_metadata_fields": ["confluence-page-url"],
+            }
 
             async with asyncio.timeout(ASYNC_TIMEOUT):
                 logger.info(f"Sending prompt to conversation with URL: {prompt_url}")
@@ -119,7 +122,7 @@ async def perform_conversation_api_search(prompt: str, collection: str, writer: 
                 ) as response:
                     response.raise_for_status()
                     result = await response.json()
-
+                    logger.info(f"Received response from conversation API: {result}")
                     # Extract the content from the response
                     content = result.get("content", "")
 
@@ -127,6 +130,7 @@ async def perform_conversation_api_search(prompt: str, collection: str, writer: 
                     sources = result.get("sources", [])
                     citations_url = ""
                     for source in sources:
+                        logger.info(f"Processing source: {source}")
                         md = source.get("extra_metadata", '{}')
                         md = json.loads(md)
                         cit = md.get(
