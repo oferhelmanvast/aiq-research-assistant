@@ -128,7 +128,7 @@ async def perform_conversation_api_search(prompt: str, collection: str, writer: 
 
                     # Format citations similar to search_rag
                     sources = result.get("sources", [])
-                    citations_url = ""
+                    citations_urls = set()
                     for source in sources:
                         logger.info(f"Processing source: {source}")
                         md = source.get("extra_metadata", '{}')
@@ -138,8 +138,10 @@ async def perform_conversation_api_search(prompt: str, collection: str, writer: 
                         )
                         if not cit:
                             cit = source.get("doc_path", "")
-                        citations_url += f"- {cit}\n"
-                    citations = dedent(f"""
+                        citations_urls.add(cit)
+                    urls = "\n".join(f"- {url}" for url in citations_urls)  
+                    citations = dedent(
+                        f"""
 
 ---
 QUERY:
@@ -149,9 +151,10 @@ ANSWER:
 {content}
 
 CITATION:
-{citations_url}
+{urls}
 
-                        """)
+                        """
+                    )
                     return (content, citations)
 
         except asyncio.TimeoutError:
