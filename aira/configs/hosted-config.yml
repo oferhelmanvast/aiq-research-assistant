@@ -34,6 +34,7 @@ llms:
     model_name: meta/llama-3.3-70b-instruct
     temperature: 0.0
     base_url: https://integrate.api.nvidia.com/v1
+    api_key: ${OPENAI_API_KEY}
     
   # The reasoning llm is used for report planning and reflection and should be a reasoning model
   # that supports thinking tokens. The default configuration below is used assuming a docker compose
@@ -46,6 +47,7 @@ llms:
     base_url: https://integrate.api.nvidia.com/v1
     max_tokens: 5000
     stream: true
+    api_key: ${OPENAI_API_KEY}
   
 
 functions:
@@ -55,13 +57,13 @@ functions:
   generate_summary:
     _type: generate_summaries
     # update to the IP address of the RAG server if you are not deploying RAG with docker compose
-    rag_url: http://rag-server:8081/v1 
+    rag_url: http://nvidia-api:8000/v1
 
   artifact_qa:
     _type: artifact_qa
     llm_name: instruct_llm
     # update to the IP address of the RAG server if you are not deploying RAG with docker compose
-    rag_url: http://rag-server:8081/v1
+    rag_url: http://nvidia-api:8000/v1
   
   health_check:
     _type: health_check
@@ -75,7 +77,6 @@ functions:
       - name: "Financial_Dataset"
         topic: "Financial"
         report_organization: "You are a financial analyst who specializes in financial statement analysis. Write a financial report analyzing the 2023 financial performance of Amazon. Identify trends in revenue growth, net income, and total assets. Discuss how these trends affected Amazon's yearly financial performance for 2023. Your output should be organized into a brief introduction, as many sections as necessary to create a comprehensive report, and a conclusion. Format your answer in paragraphs. Use factual sources such as Amazon's quarterly meeting releases for 2023. Cross analyze the sources to draw original and sound conclusions and explain your reasoning for arriving at conclusions. Do not make any false or unverifiable claims. I want a factual report with cited sources."
-
 
 workflow:
   _type: ai_researcher

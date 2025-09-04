@@ -61,6 +61,40 @@ The NVIDIA RAG blueprint provides a rag server, typically running on port 8081. 
     *   **Response**: JSON OpenAI chat completions response along with a citations element.
 
 
+2.  **Retrieve Text Chunks**
+    *   **Method**: `POST`
+    *   **Default Path**: `/api/v1/retrieve`
+    *   **Description**: Retrieves relevant text chunks from a collection based on a query prompt.
+    *   **Request**: JSON payload including:
+        *   `collection_name` (string, name of the collection to search)
+        *   `prompt` (string, the search query)
+        *   `top_k` (integer, number of top documents to return, default: 10)
+        *   `top_k_from_vectorstore` (integer, number of candidates to retrieve from vector store before reranking, default: 60)
+        *   `with_rerank` (boolean, whether to apply reranking, default: false)
+        *   `extra_metadata_fields` (array of strings, additional metadata fields to include, e.g., `["task_ingestion_id"]`)
+    *   **Response**: JSON array of document chunks with metadata including `id`, `doc_path`, `content`, `relevance_score`, `page_number`, `start_index`, and any requested extra metadata fields.
+
+3.  **Create Conversation**
+    *   **Method**: `POST`
+    *   **Default Path**: `/api/v1/conversations`
+    *   **Description**: Creates a new conversation session for RAG queries.
+    *   **Request**: JSON payload including:
+        *   `title` (string, conversation title)
+        *   `collection_name` (string, name of the collection to use)
+    *   **Response**: JSON object with conversation details including `id`.
+
+4.  **Send Prompt to Conversation**
+    *   **Method**: `POST`
+    *   **Default Path**: `/api/v1/conversations/{conversation_id}/prompt`
+    *   **Description**: Sends a prompt to an existing conversation and gets a RAG-enhanced response.
+    *   **Request**: JSON payload including:
+        *   `prompt` (string, the query)
+        *   `top_k` (integer, number of top documents to return, default: 10)
+        *   `top_k_from_vectorstore` (integer, number of candidates to retrieve from vector store before reranking, default: 60)
+        *   `with_rerank` (boolean, whether to apply reranking, default: false)
+        *   `extra_metadata_fields` (array of strings, additional metadata fields to include, e.g., `["task_ingestion_id"]`)
+    *   **Response**: JSON object with `content` field containing the RAG response.
+
 ## NVIDIA RAG Endpoints - Ingestor Server
 
 The NVIDIA RAG blueprint provides an ingestor service, typically running on port 8082. These endpoints are used by the demo frontend and the customizable frontend for creating collections, uploading files, and deleting files. See the NVIDIA RAG blueprint [API schema](https://github.com/NVIDIA-AI-Blueprints/rag/blob/main/docs/api_reference/openapi_schema_ingestor_server.json) for full details.
