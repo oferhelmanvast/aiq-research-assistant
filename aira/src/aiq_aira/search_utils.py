@@ -158,6 +158,7 @@ CITATION:
                     return (content, citations)
 
         except asyncio.TimeoutError:
+            logger.exception("Error during conversation API search")
             writer(
                 {
                     "rag_answer": dedent(f"""
@@ -168,6 +169,7 @@ CITATION:
             )
             return ("Timeout fetching conversation API:", "")
         except Exception as e:
+            logger.exception("Error during conversation API search")
             writer(
                 {
                     "rag_answer": dedent(f"""
